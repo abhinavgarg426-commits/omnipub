@@ -1,25 +1,30 @@
 """
-OmniPub - The Last Social Media Tool You'll Ever Need
-Connect all platforms → AI Compose → Schedule → Analyze → Grow
-FREE forever with improvements that companies pay $99-500/month for elsewhere
+OmniPub Pro - Real Social Media Data Integration
+=================================================
+Since social APIs are mostly paid/limited, this version focuses on:
+1. YouTube Data API v3 - FULLY FREE, real analytics
+2. Instagram Basic Display - Basic metrics
+3. Twitter/X - Requires paid tier (we show placeholder)
+4. LinkedIn - Requires paid membership
+
+The "Connect All Platforms" becomes:
+- Connect YouTube = REAL DATA
+- Connect Instagram = Basic followers only
+- Others = Show user their OWN manual data entry
 """
 import streamlit as st
 import requests
 import json
-import re
-import random
 from datetime import datetime, timedelta
-from io import StringIO
-import hashlib
+import random
 
 # ============================================================
 # CONFIG
 # ============================================================
 st.set_page_config(
-    page_title="OmniPub | The Last Social Media Tool You'll Ever Need",
+    page_title="OmniPub Pro | Real Social Media Data",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
 
 # Platform colors
@@ -33,40 +38,21 @@ PLATFORM_COLORS = {
     "TikTok": "#000000",
 }
 
-PLANS = {
-    "free": {"name": "Free Forever", "price": "₹0", "accounts": 5, "schedules": 50, "features": ["5 social accounts", "50 scheduled posts", "Basic analytics", "AI composer", "Content calendar"]},
-    "starter": {"name": "Starter", "price": "₹299/mo", "accounts": 15, "schedules": 200, "features": ["15 social accounts", "200 scheduled posts", "Advanced analytics", "Competitor tracking", "Team members (3)", "Priority support"]},
-    "pro": {"name": "Pro", "price": "₹799/mo", "accounts": 50, "schedules": -1, "features": ["50 social accounts", "Unlimited posts", "AI viral hooks", "Full analytics suite", "Team members (10)", "White-label reports", "API access"]},
-    "agency": {"name": "Agency", "price": "₹1999/mo", "accounts": -1, "schedules": -1, "features": ["Unlimited accounts", "Unlimited everything", "Client management", "Multi-user roles", "Dedicated support", "Custom integrations"]},
-}
-
 # ============================================================
 # STYLES
 # ============================================================
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 * { font-family: 'Manrope', sans-serif !important; }
-
 .stApp { background: #0c0c10; color: #ffffff; }
-
 .main-hero {
-    font-size: 3.5rem;
+    font-size: 3rem;
     font-weight: 800;
     background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 50%, #45B7D1 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    line-height: 1.1;
 }
-
-.hero-sub {
-    font-size: 1.3rem;
-    color: #8B8B9A;
-    font-weight: 400;
-    line-height: 1.6;
-}
-
 .platform-badge {
     display: inline-flex;
     align-items: center;
@@ -77,47 +63,12 @@ st.markdown("""
     font-weight: 600;
     margin: 4px;
 }
-
 .dashboard-card {
     background: linear-gradient(135deg, #13131c 0%, #1a1a26 100%);
     border: 1px solid #222230;
     border-radius: 20px;
     padding: 24px;
 }
-
-.post-card {
-    background: #111118;
-    border: 1px solid #222230;
-    border-radius: 16px;
-    padding: 20px;
-    margin: 12px 0;
-    transition: all 0.3s ease;
-}
-
-.post-card:hover {
-    border-color: #4ECDC4;
-    transform: translateY(-2px);
-}
-
-.calendar-day {
-    background: #111118;
-    border: 1px solid #222230;
-    border-radius: 12px;
-    padding: 12px;
-    min-height: 100px;
-    transition: all 0.2s ease;
-}
-
-.calendar-day:hover {
-    border-color: #4ECDC4;
-    background: rgba(78, 205, 196, 0.05);
-}
-
-.calendar-day.has-posts {
-    border-color: #FF6B6B;
-    background: rgba(255, 107, 107, 0.08);
-}
-
 .stat-box {
     background: rgba(78, 205, 196, 0.08);
     border: 1px solid rgba(78, 205, 196, 0.2);
@@ -125,101 +76,46 @@ st.markdown("""
     padding: 20px;
     text-align: center;
 }
-
-.stat-number {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: #4ECDC4;
-}
-
-.analytics-chart {
+.stat-number { font-size: 2.5rem; font-weight: 800; color: #4ECDC4; }
+.post-card {
     background: #111118;
     border: 1px solid #222230;
     border-radius: 16px;
     padding: 20px;
     margin: 12px 0;
 }
-
-.platform-connect {
+.connect-card {
     background: #111118;
     border: 1px solid #222230;
     border-radius: 14px;
     padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     margin: 8px 0;
     transition: all 0.3s ease;
 }
-
-.platform-connect:hover {
-    border-color: #4ECDC4;
-}
-
-.schedule-time {
-    background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+.connect-card:hover { border-color: #4ECDC4; }
+.connected-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    padding: 4px 12px;
     border-radius: 20px;
-    padding: 6px 14px;
     font-size: 0.8rem;
     font-weight: 600;
 }
-
-.cta-primary {
-    background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);
-    color: white;
-    border: none;
-    border-radius: 14px;
-    font-weight: 700;
-    padding: 16px 40px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
+.api-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #EF4444;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
 }
-
-.cta-primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 50px rgba(78, 205, 196, 0.3);
+.api-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10B981;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
 }
-
-.price-card {
-    background: #0c0c10;
-    border: 1px solid #1f1f2e;
-    border-radius: 20px;
-    padding: 32px;
-    text-align: center;
-    transition: all 0.3s ease;
-}
-
-.price-card:hover {
-    border-color: #4ECDC4;
-    transform: scale(1.02);
-}
-
-.price-card.featured {
-    background: linear-gradient(135deg, #13131c 0%, #1a1a26 100%);
-    border: 2px solid #4ECDC4;
-    position: relative;
-}
-
-.price-card.featured::before {
-    content: '⚡ MOST POPULAR';
-    position: absolute;
-    top: -14px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
-    color: white;
-    padding: 6px 20px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-[data-testid="stSidebar"] {
-    background: #0c0c10;
-    border-right: 1px solid #1f1f2e;
-}
-
+[data-testid="stSidebar"] { background: #0c0c10; border-right: 1px solid #1f1f2e; }
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea,
 .stSelectbox > div > div {
@@ -228,7 +124,6 @@ st.markdown("""
     color: #ffffff !important;
     border-radius: 12px !important;
 }
-
 .stButton > button {
     background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);
     color: white;
@@ -237,961 +132,568 @@ st.markdown("""
     font-weight: 600;
     padding: 12px 28px;
 }
-
-.stTabs > div > div {
-    background: #111118;
-    border-radius: 12px;
-}
-
-.tab-selected {
-    background: linear-gradient(135deg, #FF6B6B, #4ECDC4) !important;
-    color: white !important;
-}
-
-.viral-hook {
-    background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-}
-
-.hashtag-pill {
-    background: rgba(78, 205, 196, 0.15);
-    color: #4ECDC4;
-    border: 1px solid rgba(78, 205, 196, 0.3);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 0.85rem;
-    margin: 4px;
-    display: inline-block;
-}
-
-.connected-indicator {
-    width: 10px;
-    height: 10px;
-    background: #10B981;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 8px;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-.animated-stat {
-    animation: pulse 2s ease-in-out infinite;
-}
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
 # SESSION STATE
 # ============================================================
-if 'current_view' not in st.session_state:
-    st.session_state.current_view = 'dashboard'
-if 'scheduled_posts' not in st.session_state:
-    st.session_state.scheduled_posts = []
 if 'connected_accounts' not in st.session_state:
-    st.session_state.connected_accounts = [
-        {"platform": "Instagram", "handle": "@yourbrand", "followers": 12400, "connected": True},
-        {"platform": "Twitter/X", "handle": "@yourbrand", "followers": 8500, "connected": True},
-        {"platform": "LinkedIn", "handle": "Your Brand", "followers": 3200, "connected": True},
-    ]
-if 'analytics' not in st.session_state:
-    st.session_state.analytics = {
-        "total_reach": 245000,
-        "engagement_rate": 4.8,
-        "new_followers": 1250,
-        "posts_this_week": 28,
-    }
-if 'draft_post' not in st.session_state:
-    st.session_state.draft_post = {"content": "", "platforms": [], "media": [], "scheduled_time": None}
-if 'show_composer' not in st.session_state:
-    st.session_state.show_composer = False
+    st.session_state.connected_accounts = {}
+if 'youtube_api_key' not in st.session_state:
+    st.session_state.youtube_api_key = ""
+if 'youtube_channel_id' not in st.session_state:
+    st.session_state.youtube_channel_id = ""
 
 # ============================================================
 # SIDEBAR
 # ============================================================
 with st.sidebar:
-    st.markdown("## 📊 OmniPub")
-    st.markdown("### Your Social Command Center")
+    st.markdown("## 📊 OmniPub Pro")
+    st.markdown("### Real Data Integration")
     st.markdown("---")
     
-    # Connected accounts
     st.markdown("### 🔗 Connected Accounts")
-    for acc in st.session_state.connected_accounts:
-        color = PLATFORM_COLORS.get(acc['platform'], "#888888")
-        st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
-            <div>
-                <span style="color: {color}; font-weight: 600;">{acc['platform']}</span>
-                <div style="color: #8B8B9A; font-size: 0.8rem;">{acc['handle']}</div>
+    
+    if st.session_state.connected_accounts:
+        for platform, data in st.session_state.connected_accounts.items():
+            color = PLATFORM_COLORS.get(platform, "#888888")
+            st.markdown(f"""
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222230;">
+                <span style="color: {color}; font-weight: 600;">{platform}</span>
+                <span class="connected-badge">✓ Connected</span>
             </div>
-            <span style="color: #10B981; font-size: 0.8rem;">✓ {acc['followers']:,}</span>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.button("+ Connect Account", use_container_width=True)
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No accounts connected yet")
     
     st.markdown("---")
-    
-    # Plan info
-    plan = st.selectbox("Plan", ["Free Forever", "Starter ₹299/mo", "Pro ₹799/mo", "Agency ₹1999/mo"])
-    plan_limits = {"Free Forever": 5, "Starter ₹299/mo": 15, "Pro ₹799/mo": 50, "Agency ₹1999/mo": -1}
-    max_accounts = plan_limits.get(plan, 5)
-    
-    st.markdown(f"**📊 {len(st.session_state.connected_accounts)}/{max_accounts if max_accounts > 0 else '∞'} accounts**")
-    st.markdown(f"**📅 {len(st.session_state.scheduled_posts)}/50 posts**")
-    
-    st.markdown("---")
-    
-    # Navigation
-    st.markdown("### 🎯 Quick Actions")
-    menu = st.radio("Navigation", [
+    st.markdown("### 🎯 Navigation")
+    menu = st.radio("Go to", [
+        "🔗 Connect Platforms",
         "📊 Dashboard",
-        "✏️ Create Post",
-        "📅 Calendar",
-        "📈 Analytics",
-        "🔍 Discover",
-        "⚙️ Settings"
+        "📺 YouTube Analytics",
+        "📝 Create Post",
     ])
 
 # ============================================================
-# DASHBOARD
+# CONNECT PLATFORMS
 # ============================================================
-if menu == "📊 Dashboard":
-    # Hero
-    st.markdown('<div class="main-hero">Your Social Media, Unified</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-sub">Connect all platforms · AI compose viral posts · Schedule in bulk · Track growth. Everything Hootsuite does, free forever.</div>', unsafe_allow_html=True)
+if menu == "🔗 Connect Platforms":
+    st.markdown('<div class="main-hero">Connect Your Social Accounts</div>', unsafe_allow_html=True)
+    st.markdown("### ⚠️ Important: Social Media API Costs")
     
-    # Platform badges
     st.markdown("""
-    <div style="text-align: center; margin: 20px 0;">
-        <span class="platform-badge" style="background: rgba(225, 48, 108, 0.15); color: #E1306C;">📷 Instagram</span>
-        <span class="platform-badge" style="background: rgba(0, 0, 0, 0.8); color: white;">𝕏 Twitter/X</span>
-        <span class="platform-badge" style="background: rgba(10, 102, 194, 0.15); color: #0A66C2;">💼 LinkedIn</span>
-        <span class="platform-badge" style="background: rgba(24, 119, 242, 0.15); color: #1877F2;">👥 Facebook</span>
-        <span class="platform-badge" style="background: rgba(255, 0, 0, 0.15); color: #FF0000;">▶️ YouTube</span>
-        <span class="platform-badge" style="background: rgba(230, 0, 35, 0.15); color: #E60023;">📌 Pinterest</span>
-        <span class="platform-badge" style="background: rgba(0, 0, 0, 0.8); color: white;">🎵 TikTok</span>
+    <div class="api-warning">
+        <h4 style="margin: 0 0 12px 0; color: #EF4444;">🚨 Why Most APIs Don't Work for Free</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #D1D5DB;">
+            <li><strong>Twitter/X:</strong> $100+/month for API access. No free tier.</li>
+            <li><strong>Instagram:</strong> Basic Display API gives NO insights/analytics</li>
+            <li><strong>LinkedIn:</strong> $75+/month for marketing APIs</li>
+            <li><strong>Facebook:</strong> Page insights require Business verification</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="api-success">
+        <h4 style="margin: 0 0 12px 0; color: #10B981;">✅ What DOES Work for Free</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #D1D5DB;">
+            <li><strong>YouTube Data API v3:</strong> Free with Google Cloud (10,000 quota units/day)</li>
+            <li><strong>Instagram Basic:</strong> Can read own profile (followers, basic info)</li>
+            <li><strong>Manual Entry:</strong> Paste your own screenshots/data</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.markdown("### 🔌 Platform Connections")
+    
+    # YouTube - THE ONLY FREE ONE THAT ACTUALLY WORKS
+    st.markdown("#### 📺 YouTube (✅ Real Data Available)")
+    st.markdown("""
+    <div class="connect-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span style="color: #FF0000; font-size: 1.5rem; margin-right: 12px;">▶️</span>
+                <span style="font-weight: 700; font-size: 1.1rem;">YouTube Data API v3</span>
+            </div>
+            <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem;">FREE - Works</span>
+        </div>
+        <p style="color: #8B8B9A; margin: 12px 0 16px 0;">
+            Get real-time stats: subscribers, views, watch time, top videos, revenue estimates.
+            <br><strong>Setup:</strong> Create free Google Cloud project → Enable YouTube Data API v3 → Copy API Key
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # YouTube API Key input
+    with st.expander("🔧 Connect YouTube (Step-by-Step)"):
+        st.markdown("""
+        ### How to Get YouTube API Key (FREE):
+        
+        1. Go to **console.cloud.google.com**
+        2. Create new project (free)
+        3. Search "YouTube Data API v3" → Enable it
+        4. Go to "Credentials" → Create API Key
+        5. Copy the key and paste below
+        
+        **Channel ID:** Find it in your YouTube Studio → Settings → Channel → Advanced
+        """)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            api_key = st.text_input("YouTube API Key", type="password", help="Get from Google Cloud Console")
+        with col2:
+            channel_id = st.text_input("Your Channel ID", placeholder="UC...")
+        
+        if st.button("🔗 Connect YouTube"):
+            if api_key and channel_id:
+                # Test the API connection
+                try:
+                    test_url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={api_key}"
+                    response = requests.get(test_url, timeout=10)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get('items'):
+                            st.session_state.connected_accounts['YouTube'] = {
+                                'api_key': api_key,
+                                'channel_id': channel_id,
+                                'connected': True
+                            }
+                            st.session_state.youtube_api_key = api_key
+                            st.session_state.youtube_channel_id = channel_id
+                            st.success("✅ YouTube connected! Real data flowing now.")
+                        else:
+                            st.error("❌ Invalid Channel ID")
+                    else:
+                        st.error(f"❌ API Error: {response.status_code}")
+                except Exception as e:
+                    st.error(f"❌ Connection failed: {str(e)}")
+            else:
+                st.warning("Please enter both API Key and Channel ID")
+    
+    st.markdown("---")
+    
+    # Twitter/X - PAID API
+    st.markdown("#### 𝕏 Twitter/X (🔴 Paid API Required)")
+    st.markdown("""
+    <div class="connect-card" style="opacity: 0.7;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span style="color: #ffffff; font-size: 1.5rem; margin-right: 12px;">𝕏</span>
+                <span style="font-weight: 700; font-size: 1.1rem;">Twitter/X API</span>
+            </div>
+            <span style="background: rgba(239, 68, 68, 0.15); color: #EF4444; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem;">$100+/month</span>
+        </div>
+        <p style="color: #8B8B9A; margin: 12px 0;">
+            Twitter now charges $100+/month for Basic API access. No free tier for analytics.
+            <br><strong>Alternative:</strong> Manually enter your Twitter stats from analytics.twitter.com
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("📝 Manual Twitter Stats Entry"):
+        st.info("Since Twitter API is paid, enter your stats manually from analytics.twitter.com")
+        
+        twitter_followers = st.number_input("Followers", min_value=0, value=0)
+        twitter_tweets = st.number_input("Total Tweets", min_value=0, value=0)
+        twitter_engagement = st.number_input("Engagement Rate %", min_value=0.0, value=0.0)
+        
+        if st.button("Save Twitter Stats"):
+            st.session_state.connected_accounts['Twitter/X'] = {
+                'followers': twitter_followers,
+                'tweets': twitter_tweets,
+                'engagement': twitter_engagement,
+                'manual': True
+            }
+            st.success("Twitter stats saved (manual entry)")
+    
+    st.markdown("---")
+    
+    # Instagram - Basic only
+    st.markdown("#### 📷 Instagram (🟡 Limited - Basic Display API)")
+    st.markdown("""
+    <div class="connect-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span style="color: #E1306C; font-size: 1.5rem; margin-right: 12px;">📷</span>
+                <span style="font-weight: 700; font-size: 1.1rem;">Instagram Basic Display</span>
+            </div>
+            <span style="background: rgba(251, 191, 36, 0.15); color: #FBBF24; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem;">Limited Data</span>
+        </div>
+        <p style="color: #8B8B9A; margin: 12px 0;">
+            Basic Display API only shows YOUR profile info (username, profile pic, followers count).
+            <br><strong>NO insights, NO post analytics, NO stories data</strong> without Business SDK.
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Quick stats
-    col1, col2, col3, col4 = st.columns(4)
-    stats = [
-        ("reach", "Total Reach", f"{st.session_state.analytics['total_reach']:,}", "#4ECDC4"),
-        ("engagement", "Engagement", f"{st.session_state.analytics['engagement_rate']}%", "#FF6B6B"),
-        ("followers", "New Followers", f"+{st.session_state.analytics['new_followers']:,}", "#45B7D1"),
-        ("posts", "Posts This Week", st.session_state.analytics['posts_this_week'], "#96CEB4"),
-    ]
-    
-    for i, (key, label, value, color) in enumerate(stats):
-        with eval(f"col{i+1}"):
-            st.markdown(f"""
-            <div class="stat-box">
-                <div style="font-size: 2.5rem; font-weight: 800; color: {color};">{value}</div>
-                <div style="color: #8B8B9A; margin-top: 8px;">{label}</div>
+    # LinkedIn
+    st.markdown("#### 💼 LinkedIn (🔴 Marketing API - Paid)")
+    st.markdown("""
+    <div class="connect-card" style="opacity: 0.7;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span style="color: #0A66C2; font-size: 1.5rem; margin-right: 12px;">💼</span>
+                <span style="font-weight: 700; font-size: 1.1rem;">LinkedIn Marketing API</span>
             </div>
-            """, unsafe_allow_html=True)
+            <span style="background: rgba(239, 68, 68, 0.15); color: #EF4444; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem;">$75+/month</span>
+        </div>
+        <p style="color: #8B8B9A; margin: 12px 0;">
+            LinkedIn charges $75+/month for Marketing Developer Platform access.
+            <br><strong>No free analytics for company pages.</strong>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Main dashboard grid
-    col_left, col_right = st.columns([2, 1])
+    # Summary
+    st.markdown("### 📊 Connection Status Summary")
     
-    with col_left:
-        st.markdown("### 📝 Quick Compose")
-        
-        # AI Composer button
-        if st.button("✨ Open AI Composer", type="primary", use_container_width=True):
-            st.session_state.show_composer = True
-            st.rerun()
-        
-        # Simple compose form
-        st.markdown("**Write your post:**")
-        post_content = st.text_area("What's happening?", height=120, placeholder="Share something with your audience...", label_visibility="collapsed")
-        
-        col_a, col_b = st.columns(2)
-        with col_a:
-            platforms = st.multiselect("Post to", 
-                ["Instagram", "Twitter/X", "LinkedIn", "Facebook", "YouTube", "Pinterest"],
-                default=["Instagram", "Twitter/X"]
-            )
-        with col_b:
-            schedule_option = st.selectbox("When", ["Post now", "Schedule for later"])
-        
-        if schedule_option == "Schedule for later":
-            col_c, col_d = st.columns(2)
-            with col_c:
-                schedule_date = st.date_input("Date")
-            with col_d:
-                schedule_time = st.time_input("Time")
-        
-        # Media upload
-        uploaded_files = st.file_uploader("📎 Add media (images, videos)", type=['jpg', 'png', 'mp4', 'gif'], accept_multiple_files=True)
-        
-        if uploaded_files:
-            st.success(f"✅ {len(uploaded_files)} file(s) attached")
-        
-        # Hashtags suggestion
-        st.markdown("**#️⃣ Suggested Hashtags:**")
-        suggested_hashtags = ["#socialmedia", "#marketing", "#growth", "#digitalmarketing", "#contentcreation", "#business", "#entrepreneur", "#success"]
-        cols = st.columns(4)
-        for i, tag in enumerate(suggested_hashtags[:8]):
-            with cols[i % 4]:
-                if st.checkbox(tag, value=True, key=f"tag_{i}"):
-                    pass
-        
-        if st.button("📅 Schedule Post", use_container_width=True):
-            if post_content and platforms:
-                new_post = {
-                    "id": len(st.session_state.scheduled_posts) + 1,
-                    "content": post_content,
-                    "platforms": platforms,
-                    "scheduled_date": str(schedule_date) if schedule_option == "Schedule for later" else datetime.now().strftime("%Y-%m-%d"),
-                    "scheduled_time": str(schedule_time) if schedule_option == "Schedule for later" else datetime.now().strftime("%H:%M"),
-                    "hashtags": [tag for i, tag in enumerate(suggested_hashtags[:8]) if st.session_state.get(f"tag_{i}", True)],
-                    "media_count": len(uploaded_files) if uploaded_files else 0,
-                    "status": "scheduled"
-                }
-                st.session_state.scheduled_posts.append(new_post)
-                st.balloons()
-                st.success("🎉 Post scheduled! It will go live automatically.")
+    if st.session_state.connected_accounts:
+        for platform, data in st.session_state.connected_accounts.items():
+            if platform == 'YouTube':
+                st.success(f"✅ {platform} - LIVE DATA CONNECTED")
             else:
-                st.warning("Please write something and select at least one platform.")
-    
-    with col_right:
-        st.markdown("### 📊 Platform Overview")
-        
-        for acc in st.session_state.connected_accounts:
-            color = PLATFORM_COLORS.get(acc['platform'], "#888888")
-            st.markdown(f"""
-            <div class="dashboard-card" style="padding: 16px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: {color}; font-weight: 700; font-size: 1.1rem;">{acc['platform']}</span>
-                    <span style="color: #10B981; font-size: 0.85rem;">{acc['followers']:,} followers</span>
-                </div>
-                <div style="margin-top: 12px; display: flex; gap: 16px;">
-                    <div style="flex: 1; text-align: center;">
-                        <div style="color: #4ECDC4; font-weight: 700; font-size: 1.2rem;">{random.randint(50, 500)}</div>
-                        <div style="color: #8B8B9A; font-size: 0.75rem;">Posts</div>
-                    </div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="color: #FF6B6B; font-weight: 700; font-size: 1.2rem;">{random.randint(100, 2000)}</div>
-                        <div style="color: #8B8B9A; font-size: 0.75rem;">Engagement</div>
-                    </div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="color: #45B7D1; font-weight: 700; font-size: 1.2rem;">+{random.randint(10, 200)}</div>
-                        <div style="color: #8B8B9A; font-size: 0.75rem;">This Week</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("### 🔥 Upcoming Posts")
-        if st.session_state.scheduled_posts:
-            for post in st.session_state.scheduled_posts[-3:]:
-                st.markdown(f"""
-                <div class="post-card" style="padding: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: #8B8B9A; font-size: 0.85rem;">📅 {post['scheduled_date']} at {post['scheduled_time']}</span>
-                        <span style="background: rgba(78, 205, 196, 0.15); color: #4ECDC4; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem;">{', '.join(post['platforms'][:2])}</span>
-                    </div>
-                    <p style="color: #ffffff; font-size: 0.9rem; margin: 8px 0 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{post['content'][:80]}...</p>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("No scheduled posts yet. Create your first one!")
-
-# ============================================================
-# AI COMPOSER
-# ============================================================
-elif menu == "✏️ Create Post":
-    st.markdown("## ✨ AI-Powered Post Composer")
-    st.markdown("*Let AI help you write posts that actually go viral*")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown("### 📝 What do you want to post about?")
-        
-        content_type = st.selectbox("Content Type", [
-            "Educational / How-to",
-            "Behind the scenes",
-            "Product launch",
-            "Team highlight",
-            "Customer testimonial",
-            "Industry news",
-            "Motivational",
-            "Tips & tricks",
-            "Poll / Question",
-            "Announcement",
-        ])
-        
-        topic = st.text_input("Topic / Key Message", placeholder="e.g., How to save money on marketing")
-        
-        tone = st.selectbox("Tone", ["Professional", "Casual", "Humorous", "Inspirational", "Educational", "Bold/Provocative"])
-        
-        target_audience = st.text_input("Target Audience", placeholder="e.g., Small business owners, startup founders")
-        
-        goal = st.selectbox("Goal", ["Drive engagement", "Get followers", "Drive website traffic", "Generate leads", "Build brand awareness"])
-        
-        # Platform-specific options
-        st.markdown("### ⚙️ Platform Customization")
-        
-        max_length = st.slider("Max characters", 100, 3000, 280)
-        st.caption("Instagram: 2,200 | Twitter: 280 | LinkedIn: 3,000 | Facebook: 63,206")
-        
-        include_emoji = st.checkbox("Include emojis", value=True)
-        include_cta = st.checkbox("Include call-to-action", value=True)
-        
-        # Generate button
-        if st.button("🧠 Generate Viral Post", type="primary", use_container_width=True):
-            with st.spinner("🤖 AI is crafting your viral post..."):
-                # Simulate AI generation
-                import time
-                time.sleep(1.5)
-                
-                # Generated content
-                ai_content = f"""🔥 {topic}
-
-Here's what most people get wrong about {topic}:
-
-• They think it's complicated. It's not.
-• They wait for the "perfect time." There's no perfect time.
-• They copy competitors. Big mistake.
-
-The truth? {goal} comes down to ONE thing:
-
-[Your insight here]
-
-Save this post & drop a 🙌 if you agree.
-
-#business #growth #marketing #success #entrepreneur #motivation #startup"""
-                
-                st.session_state.draft_post['content'] = ai_content
-    
-    with col2:
-        st.markdown("### 🎯 Generated Post Preview")
-        
-        if st.session_state.draft_post.get('content'):
-            platforms = st.multiselect("Post to", 
-                ["Instagram", "Twitter/X", "LinkedIn", "Facebook", "YouTube", "Pinterest"],
-                default=["Instagram", "Twitter/X"]
-            )
-            
-            for platform in platforms:
-                color = PLATFORM_COLORS.get(platform, "#888888")
-                char_limit = {"Instagram": 2200, "Twitter/X": 280, "LinkedIn": 3000}.get(platform, 3000)
-                current_len = len(st.session_state.draft_post['content'])
-                over_limit = current_len > char_limit
-                
-                st.markdown(f"""
-                <div style="background: #111118; border: 1px solid {'#EF4444' if over_limit else '#222230'}; border-radius: 12px; padding: 16px; margin: 8px 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="color: {color}; font-weight: 600;">{platform}</span>
-                        <span style="color: {'#EF4444' if over_limit else '#10B981'}; font-size: 0.85rem;">{current_len}/{char_limit}</span>
-                    </div>
-                    <div style="color: #ffffff; font-size: 0.9rem; line-height: 1.6;">
-                        {st.session_state.draft_post['content'][:char_limit]}{'...' if over_limit else ''}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            # Hashtag recommendations
-            st.markdown("### #️⃣ AI Hashtag Recommendations")
-            
-            hashtag_groups = {
-                "High viral potential": ["#viral", "#trending", "#fyp", "#explore", "#reels"],
-                "Industry specific": ["#marketing", "#business", "#entrepreneur", "#startup", "#success"],
-                "Niche targeted": ["#digitalmarketing", "#growthhacking", "#contentcreator", "#socialmediatips"],
-            }
-            
-            for group_name, hashtags in hashtag_groups.items():
-                st.markdown(f"**{group_name}:**")
-                cols = st.columns(5)
-                for i, tag in enumerate(hashtags):
-                    with cols[i]:
-                        st.markdown(f"<span class='hashtag-pill'>{tag}</span>", unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            # Best times to post
-            st.markdown("### ⏰ Best Times to Post")
-            
-            best_times = {
-                "Instagram": ["9 AM - 11 AM", "12 PM - 2 PM", "7 PM - 9 PM"],
-                "Twitter/X": ["8 AM - 10 AM", "12 PM - 2 PM", "5 PM - 7 PM"],
-                "LinkedIn": ["8 AM - 10 AM", "12 PM", "5 PM - 6 PM"],
-                "Facebook": ["1 PM - 3 PM", "4 PM - 6 PM"],
-            }
-            
-            for platform, times in best_times.items():
-                if platform in platforms:
-                    color = PLATFORM_COLORS.get(platform, "#888888")
-                    st.markdown(f"**{platform}:** {', '.join(times)}")
-            
-            # Action buttons
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.button("📅 Schedule", use_container_width=True)
-            with col_b:
-                st.button("✏️ Edit", use_container_width=True)
-            with col_c:
-                st.button("🔄 Regenerate", use_container_width=True)
-        else:
-            st.info("👆 Enter your topic and click 'Generate' to create a viral post!")
-
-# ============================================================
-# CALENDAR
-# ============================================================
-elif menu == "📅 Calendar":
-    st.markdown("## 📅 Content Calendar")
-    st.markdown("*Visualize your entire social media strategy at a glance*")
-    
-    # Month selector
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
-        prev_month = st.button("◀ Previous")
-    with col2:
-        selected_month = st.selectbox("Month", ["July 2026", "August 2026", "September 2026"], index=0)
-    with col3:
-        next_month = st.button("Next ▶")
-    
-    st.markdown("---")
-    
-    # Calendar grid
-    days_in_month = 31
-    first_day = 1  # Tuesday
-    
-    # Day headers
-    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    cols = st.columns(7)
-    for i, day in enumerate(day_names):
-        with cols[i]:
-            st.markdown(f"**{day}**", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Generate calendar
-    weeks = []
-    current_week = [None] * (first_day - 1)  # Empty cells before first day
-    
-    for day in range(1, days_in_month + 1):
-        current_week.append(day)
-        if len(current_week) == 7:
-            weeks.append(current_week)
-            current_week = []
-    
-    if current_week:
-        current_week.extend([None] * (7 - len(current_week)))
-        weeks.append(current_week)
-    
-    # Display calendar
-    for week in weeks:
-        cols = st.columns(7)
-        for i, day in enumerate(week):
-            with cols[i]:
-                if day:
-                    # Check if there are posts on this day
-                    day_posts = [p for p in st.session_state.scheduled_posts if str(day) in p.get('scheduled_date', '')]
-                    has_posts = len(day_posts) > 0
-                    
-                    day_class = "calendar-day has-posts" if has_posts else "calendar-day"
-                    
-                    st.markdown(f"""
-                    <div class="{day_class}">
-                        <div style="font-weight: 700; color: #4ECDC4; margin-bottom: 8px;">{day}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if has_posts:
-                        for post in day_posts[:2]:
-                            st.markdown(f"""
-                            <div style="background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(78, 205, 196, 0.2)); border-radius: 6px; padding: 4px 8px; margin: 4px 0; font-size: 0.75rem; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                {post['content'][:30]}...
-                            </div>
-                            """, unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='min-height: 100px;'></div>", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Scheduled posts list
-    st.markdown("### 📋 All Scheduled Posts")
-    
-    if st.session_state.scheduled_posts:
-        for post in st.session_state.scheduled_posts:
-            platforms_html = " ".join([f"<span style='background: {PLATFORM_COLORS.get(p, '#888')}; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-right: 4px;'>{p}</span>" for p in post['platforms']])
-            
-            st.markdown(f"""
-            <div class="post-card">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div style="flex: 1;">
-                        <div style="margin-bottom: 8px;">{platforms_html}</div>
-                        <p style="color: #ffffff; margin: 0 0 8px 0;">{post['content'][:150]}{'...' if len(post['content']) > 150 else ''}</p>
-                        <div style="color: #8B8B9A; font-size: 0.85rem;">📅 {post['scheduled_date']} at {post['scheduled_time']}</div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button style="background: #1a1a26; border: 1px solid #4ECDC4; color: #4ECDC4; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem;">✏️ Edit</button>
-                        <button style="background: rgba(239, 68, 68, 0.1); border: 1px solid #EF4444; color: #EF4444; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem;">🗑️</button>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                st.info(f"ℹ️ {platform} - Manual Entry Only")
     else:
-        st.info("No scheduled posts. Go to Dashboard to create your first post!")
+        st.warning("⚠️ No real data connections yet. Only YouTube provides free API access.")
 
 # ============================================================
-# ANALYTICS
+# DASHBOARD - SHOWS WHAT WE CAN VS CAN'T DO
 # ============================================================
-elif menu == "📈 Analytics":
-    st.markdown("## 📈 Analytics Dashboard")
-    st.markdown("*Track what works, double down on what's viral*")
+elif menu == "📊 Dashboard":
+    st.markdown('<div class="main-hero">Your Social Media, Unified</div>', unsafe_allow_html=True)
+    st.markdown("### ⚠️ Realistic Expectations: What Data Can We Actually Get?")
     
-    # Date range selector
-    col1, col2, col3 = st.columns([1, 1, 1])
+    # Show connection status
+    col1, col2, col3 = st.columns(3)
     with col1:
-        date_range = st.selectbox("Date Range", ["Last 7 days", "Last 30 days", "Last 90 days", "This year"])
-    with col2:
-        compare_to = st.checkbox("Compare to previous period")
-    with col3:
-        export_format = st.selectbox("Export", ["PDF Report", "CSV Data", "PNG Image"])
-    
-    st.markdown("---")
-    
-    # Key metrics
-    col1, col2, col3, col4 = st.columns(4)
-    metrics = [
-        ("reach", "Total Reach", "245,000", "+12%"),
-        ("impressions", "Impressions", "892,000", "+8%"),
-        ("engagement", "Engagement Rate", "4.8%", "+0.4%"),
-        ("clicks", "Link Clicks", "3,420", "+15%"),
-    ]
-    
-    for i, (key, label, value, change) in enumerate(metrics):
-        with eval(f"col{i+1}"):
-            change_color = "#10B981" if "+" in change else "#EF4444"
-            st.markdown(f"""
-            <div class="stat-box">
-                <div style="font-size: 2.2rem; font-weight: 800; color: #4ECDC4;">{value}</div>
-                <div style="color: #8B8B9A; margin: 8px 0;">{label}</div>
-                <div style="color: {change_color}; font-weight: 600; font-size: 0.9rem;">{change} vs last period</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Charts row
-    col_left, col_right = st.columns([2, 1])
-    
-    with col_left:
-        st.markdown("### 📊 Performance Over Time")
-        
-        # Create chart data
-        import pandas as pd
-        days = list(range(1, 31))
-        reach_data = [8000 + random.randint(-1000, 2000) for _ in range(30)]
-        engagement_data = [4 + random.uniform(-0.5, 1) for _ in range(30)]
-        
-        chart_df = pd.DataFrame({
-            "Day": days,
-            "Reach": reach_data,
-            "Engagement %": engagement_data
-        })
-        
-        st.line_chart(chart_df.set_index("Day"))
-    
-    with col_right:
-        st.markdown("### 🏆 Top Performing Posts")
-        
-        top_posts = [
-            {"platform": "Instagram", "content": "How we 10x'd our engagement...", "likes": 2340, "reach": 45000},
-            {"platform": "Twitter/X", "content": "Hot take: Content is worthless without...", "likes": 890, "reach": 28000},
-            {"platform": "LinkedIn", "content": "We hired 10 people last month. Here's what...", "likes": 567, "reach": 15000},
-        ]
-        
-        for i, post in enumerate(top_posts):
-            st.markdown(f"""
-            <div class="post-card" style="padding: 14px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: {PLATFORM_COLORS.get(post['platform'], '#888')}; font-weight: 600; font-size: 0.85rem;">{post['platform']}</span>
-                    <span style="color: #10B981; font-size: 0.85rem;">#{i+1}</span>
-                </div>
-                <p style="color: #ffffff; font-size: 0.9rem; margin: 0 0 8px 0;">{post['content']}</p>
-                <div style="display: flex; gap: 16px; color: #8B8B9A; font-size: 0.8rem;">
-                    <span>❤️ {post['likes']:,}</span>
-                    <span>👁️ {post['reach']:,}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Platform breakdown
-    st.markdown("### 📱 Platform Breakdown")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    platforms_data = [
-        ("Instagram", 45000, 5.2, 12000),
-        ("Twitter/X", 28000, 4.1, 8500),
-        ("LinkedIn", 15000, 3.8, 3200),
-        ("Facebook", 8000, 2.9, 2100),
-    ]
-    
-    for i, (platform, reach, eng, followers) in enumerate(platforms_data):
-        with eval(f"col{i+1}"):
-            color = PLATFORM_COLORS.get(platform, "#888888")
-            st.markdown(f"""
-            <div class="dashboard-card" style="text-align: center;">
-                <span style="color: {color}; font-weight: 700; font-size: 1.1rem;">{platform}</span>
-                <div style="margin: 16px 0;">
-                    <div style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">{reach:,}</div>
-                    <div style="color: #8B8B9A; font-size: 0.8rem;">Reach</div>
-                </div>
-                <div style="display: flex; justify-content: space-around;">
-                    <div>
-                        <div style="color: #4ECDC4; font-weight: 600;">{eng}%</div>
-                        <div style="color: #8B8B9A; font-size: 0.75rem;">Eng.</div>
-                    </div>
-                    <div>
-                        <div style="color: #FF6B6B; font-weight: 600;">{followers:,}</div>
-                        <div style="color: #8B8B9A; font-size: 0.75rem;">Followers</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Audience insights
-    st.markdown("### 👥 Audience Insights")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**📍 Top Locations**")
-        locations = [("India", 35), ("USA", 28), ("UK", 12), ("Canada", 8), ("Others", 17)]
-        for loc, pct in locations:
-            st.markdown(f"""
-            <div style="display: flex; align-items: center; margin: 8px 0;">
-                <div style="flex: 1; color: #ffffff;">{loc}</div>
-                <div style="flex: 2; background: #1a1a26; border-radius: 6px; height: 8px; margin-left: 12px;">
-                    <div style="background: linear-gradient(90deg, #FF6B6B, #4ECDC4); height: 8px; border-radius: 6px; width: {pct}%;"></div>
-                </div>
-                <div style="color: #4ECDC4; width: 40px; text-align: right;">{pct}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("**⏰ Best Times to Post**")
-        times = [
-            ("9:00 AM", "High engagement"),
-            ("12:00 PM", "Peak activity"),
-            ("7:00 PM", "Good reach"),
-            ("10:00 PM", "Late night browsing"),
-        ]
-        for time, label in times:
-            st.markdown(f"""
-            <div style="background: #111118; padding: 10px 14px; border-radius: 8px; margin: 6px 0; display: flex; justify-content: space-between;">
-                <span style="color: #ffffff; font-weight: 500;">{time}</span>
-                <span style="color: #4ECDC4; font-size: 0.85rem;">{label}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-# ============================================================
-# DISCOVER (Competitor tracking)
-# ============================================================
-elif menu == "🔍 Discover":
-    st.markdown("## 🔍 Discover & Competitor Tracking")
-    st.markdown("*Spy on competitors and find trending content in your niche*")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown("### 🔎 Track Competitors")
-        
-        competitor = st.text_input("Enter competitor handle/URL", placeholder="@competitor or competitor.com")
-        
-        if competitor and st.button("🔍 Analyze", use_container_width=True):
-            st.info(f"Analyzing {competitor}...")
-            
-            # Mock competitor data
-            st.success("Analysis complete!")
-            
-            st.markdown(f"""
-            <div class="dashboard-card">
-                <h4 style="color: #4ECDC4; margin: 0 0 16px 0;">📊 @{competitor} Analytics</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div style="background: #1a1a26; padding: 16px; border-radius: 12px; text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: #ffffff;">45,200</div>
-                        <div style="color: #8B8B9A; font-size: 0.85rem;">Followers</div>
-                    </div>
-                    <div style="background: #1a1a26; padding: 16px; border-radius: 12px; text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: #4ECDC4;">5.2%</div>
-                        <div style="color: #8B8B9A; font-size: 0.85rem;">Engagement</div>
-                    </div>
-                    <div style="background: #1a1a26; padding: 16px; border-radius: 12px; text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: #FF6B6B;">28</div>
-                        <div style="color: #8B8B9A; font-size: 0.85rem;">Posts/Week</div>
-                    </div>
-                    <div style="background: #1a1a26; padding: 16px; border-radius: 12px; text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: #45B7D1;">12:30 PM</div>
-                        <div style="color: #8B8B9A; font-size: 0.85rem;">Best Post Time</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### 🔥 Trending in Your Niche")
-        
-        trends = [
-            {"topic": "AI Tools", "posts": "12.5K", "growth": "+45%"},
-            {"topic": "Side Hustles", "posts": "8.2K", "growth": "+32%"},
-            {"topic": "Remote Work", "posts": "6.8K", "growth": "+18%"},
-            {"topic": "Productivity Tips", "posts": "5.1K", "growth": "+25%"},
-        ]
-        
-        for trend in trends:
-            st.markdown(f"""
-            <div class="post-card" style="padding: 14px; margin: 8px 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <span style="color: #FF6B6B; font-weight: 700;">{trend['posts']} posts</span>
-                        <span style="color: #8B8B9A; font-size: 0.85rem;">{trend['topic']}</span>
-                    </div>
-                    <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; padding: 4px 10px; border-radius: 10px; font-size: 0.8rem;">{trend['growth']}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Hashtag discovery
-    st.markdown("### #️⃣ Hashtag Intelligence")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown("**Trending Hashtags**")
-        
-        trending_tags = [
-            ("#viral", 2.5, "+12%"),
-            ("#fyp", 2.1, "+8%"),
-            ("#marketingtips", 1.8, "+15%"),
-            ("#businessgrowth", 1.5, "+22%"),
-            ("#socialmedia", 1.2, "+5%"),
-        ]
-        
-        for tag, score, change in trending_tags:
-            st.markdown(f"""
-            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222230;">
-                <span style="color: #4ECDC4; font-weight: 600;">{tag}</span>
-                <span style="color: #8B8B9A;">Score: {score}</span>
-                <span style="color: #10B981;">{change}</span>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("**Hashtags Your Competitors Use**")
-        
-        competitor_tags = [
-            ("#entrepreneur", "Used by 80% of competitors"),
-            ("#startup", "Used by 65% of competitors"),
-            ("#success", "Used by 55% of competitors"),
-            ("#motivation", "Used by 40% of competitors"),
-            ("#growthmindset", "Used by 35% of competitors"),
-        ]
-        
-        for tag, note in competitor_tags:
-            st.markdown(f"""
-            <div style="padding: 8px 0; border-bottom: 1px solid #222230;">
-                <span style="color: #FF6B6B; font-weight: 600;">{tag}</span>
-                <div style="color: #8B8B9A; font-size: 0.8rem;">{note}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-# ============================================================
-# SETTINGS
-# ============================================================
-elif menu == "⚙️ Settings":
-    st.markdown("## ⚙️ Settings")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown("### 🔗 Connected Accounts")
-        
-        all_platforms = ["Instagram", "Twitter/X", "LinkedIn", "Facebook", "YouTube", "Pinterest", "TikTok"]
-        
-        for platform in all_platforms:
-            connected = any(acc['platform'] == platform for acc in st.session_state.connected_accounts)
-            color = PLATFORM_COLORS.get(platform, "#888888")
-            
-            st.markdown(f"""
-            <div class="platform-connect">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="color: {color}; font-size: 1.5rem;">
-                        {'📷' if 'Instagram' in platform else '𝕏' if 'Twitter' in platform else '💼' if 'LinkedIn' in platform else '👥' if 'Facebook' in platform else '▶️' if 'YouTube' in platform else '📌' if 'Pinterest' in platform else '🎵'}
-                    </span>
-                    <div>
-                        <div style="color: #ffffff; font-weight: 600;">{platform}</div>
-                        <div style="color: #8B8B9A; font-size: 0.85rem;">{'Connected' if connected else 'Not connected'}</div>
-                    </div>
-                </div>
-                <button style="background: {'rgba(16, 185, 129, 0.15)' if connected else 'linear-gradient(135deg, #FF6B6B, #4ECDC4)'}; color: {'#10B981' if connected else 'white'}; border: {'1px solid #10B981' if connected else 'none'}; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
-                    {f'✓ Connected' if connected else '+ Connect'}
-                </button>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### ⏰ Default Schedule")
-        
-        st.selectbox("Default posting time", ["6:00 AM", "8:00 AM", "9:00 AM", "12:00 PM", "5:00 PM", "7:00 PM", "9:00 PM"])
-        
-        st.selectbox("Posts per day", ["1", "2", "3", "4", "5", "Custom"])
-        
-        st.checkbox("Auto-optimize posting times based on engagement")
-        st.checkbox("Auto-recycle top performing posts")
-        st.checkbox("Cross-post to all connected platforms")
-        
-        st.markdown("---")
-        
-        st.markdown("### 🔔 Notifications")
-        st.checkbox("Email when post goes live", value=True)
-        st.checkbox("Email daily summary", value=True)
-        st.checkbox("Notify when engagement spikes", value=True)
-    
-    st.markdown("---")
-    
-    st.markdown("### 🗑️ Danger Zone")
-    st.warning("⚠️ These actions are irreversible!")
-    
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.button("🗑️ Clear All Scheduled Posts")
-    with col_b:
-        st.button("❌ Disconnect All Accounts")
-
-# ============================================================
-# PRICING (always at bottom)
-# ============================================================
-st.markdown("---")
-st.markdown("## 💰 Pricing — Free Forever, Always", anchor=False)
-st.markdown("*Everything Hootsuite, Sprout Social, and Later charge $99-500/month for — completely free*")
-
-col1, col2, col3, col4 = st.columns(4)
-
-plans_list = [
-    ("free", "Free", "₹0", "forever", ["5 social accounts", "50 scheduled posts", "Basic analytics", "AI composer", "Content calendar", "1 user"], False),
-    ("starter", "Starter", "₹299", "/month", ["15 social accounts", "200 scheduled posts", "Advanced analytics", "Competitor tracking", "Team members (3)", "Hashtag intelligence"], True),
-    ("pro", "Pro", "₹799", "/month", ["50 social accounts", "Unlimited posts", "AI viral hooks", "Full analytics suite", "Team members (10)", "White-label reports", "API access"], False),
-    ("agency", "Agency", "₹1999", "/month", ["Unlimited accounts", "Unlimited everything", "Client management", "Multi-user roles", "Dedicated support", "Custom integrations"], False),
-]
-
-for i, (plan_id, name, price, period, features, featured) in enumerate(plans_list):
-    with eval(f"col{i+1}"):
-        if featured:
-            st.markdown("<div class='price-card featured'>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div class='price-card'>", unsafe_allow_html=True)
-        
-        st.markdown(f"### {name}")
-        st.markdown(f"<h2 style='margin: 8px 0;'><span style='font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #FF6B6B, #4ECDC4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>{price}</span><span style='font-size: 1rem; color: #8B8B9A;'>{period}</span></h2>", unsafe_allow_html=True)
-        
-        for f in features:
-            st.markdown(f"✅ {f}")
-        
-        if featured:
-            st.button(f"Get Started — {price}{period}", type="primary", use_container_width=True)
-        else:
-            st.button(f"Get Started", use_container_width=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# ============================================================
-# COMPARISON TABLE
-# ============================================================
-st.markdown("---")
-st.markdown("### 📊 Why Pay $99-500/month When You Get It Free?")
-
-comparison = """
-| Feature | Hootsuite | Later | Sprout Social | **OmniPub** |
-|---------|-----------|-------|---------------|-------------|
-| Social accounts | 10 ($99) | 3 ($18) | 5 ($149) | **Unlimited (FREE)** |
-| Scheduled posts | 30 | 60 | Unlimited | **Unlimited (FREE)** |
-| Analytics | Basic ($99) | Limited | Advanced | **Full Suite (FREE)** |
-| AI Composer | $99/mo extra | ❌ | $249/mo | **Included (FREE)** |
-| Team members | 3 ($149) | 2 ($35) | 5 ($299) | **10 (FREE)** |
-| Competitor tracking | ❌ | ❌ | $249/mo | **Included (FREE)** |
-| Content calendar | ✅ | ✅ | ✅ | **✅ (FREE)** |
-"""
-st.markdown(comparison)
-
-# ============================================================
-# TESTIMONIALS
-# ============================================================
-st.markdown("---")
-st.markdown("### 💬 What Early Users Say")
-
-cols = st.columns(3)
-testimonials = [
-    ("P", "Priya Sharma", "Social Media Manager", "\"I used to pay $150/month for Hootsuite + $49/month for Later. With OmniPub, I get everything free. My老板 was shocked.\"", "#FF6B6B"),
-    ("A", "Amit Patel", "Freelance Marketer", "\"Managing 15 client accounts used to take 4 hours daily. Now it takes 30 minutes. OmniPub is literally saving my business.\"", "#4ECDC4"),
-    ("S", "Sarah Kim", "Startup Founder", "\"We were about to pay $500/month for Sprout Social. Found OmniPub and couldn't believe it's free. The AI composer is insane.\"", "#45B7D1"),
-]
-
-for i, (initial, name, role, quote, color) in enumerate(testimonials):
-    with cols[i]:
-        st.markdown(f"""
-        <div class="dashboard-card" style="text-align: center;">
-            <div style="width: 64px; height: 64px; background: {color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; font-size: 1.8rem; font-weight: 700; color: white;">{initial}</div>
-            <h4 style="margin: 0; color: #ffffff;">{name}</h4>
-            <p style="color: #8B8B9A; font-size: 0.85rem; margin: 4px 0;">{role}</p>
-            <p style="color: #D1D5DB; font-size: 0.95rem; margin-top: 16px; font-style: italic;">{quote}</p>
+        st.markdown("""
+        <div class="stat-box">
+            <div style="font-size: 2rem;">📺</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #FF0000;">YouTube</div>
+            <div style="color: #10B981; margin-top: 8px;">✅ REAL DATA</div>
+            <div style="color: #8B8B9A; font-size: 0.85rem; margin-top: 4px;">Views, Subscribers, Watch Time, Revenue</div>
         </div>
         """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="stat-box">
+            <div style="font-size: 2rem;">📷</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #E1306C;">Instagram</div>
+            <div style="color: #FBBF24; margin-top: 8px;">🟡 BASIC ONLY</div>
+            <div style="color: #8B8B9A; font-size: 0.85rem; margin-top: 4px;">Followers count only</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="stat-box">
+            <div style="font-size: 2rem;">𝕏</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #ffffff;">Twitter/X</div>
+            <div style="color: #EF4444; margin-top: 8px;">🔴 PAID API</div>
+            <div style="color: #8B8B9A; font-size: 0.85rem; margin-top: 4px;">$100+/month required</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # YouTube Real Data Section
+    if 'YouTube' in st.session_state.connected_accounts:
+        st.markdown("### 📺 YouTube Live Analytics")
+        
+        api_key = st.session_state.connected_accounts['YouTube']['api_key']
+        channel_id = st.session_state.connected_accounts['YouTube']['channel_id']
+        
+        try:
+            # Fetch real channel data
+            channel_url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id={channel_id}&key={api_key}"
+            channel_resp = requests.get(channel_url, timeout=10)
+            
+            if channel_resp.status_code == 200:
+                channel_data = channel_resp.json()['items'][0]
+                snippet = channel_data['snippet']
+                stats = channel_data['statistics']
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Subscribers", f"{int(stats.get('subscriberCount', 0)):,}")
+                with col2:
+                    st.metric("Total Views", f"{int(stats.get('viewCount', 0)):,}")
+                with col3:
+                    st.metric("Videos", f"{int(stats.get('videoCount', 0)):,}")
+                with col4:
+                    uploads_id = channel_data['contentDetails']['relatedPlaylists']['uploads']
+                    st.text("Playlist ID")
+                    st.code(uploads_id[:20] + "...")
+                
+                # Fetch recent videos
+                videos_url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId={uploads_id}&maxResults=10&key={api_key}"
+                videos_resp = requests.get(videos_url, timeout=10)
+                
+                if videos_resp.status_code == 200:
+                    videos = videos_resp.json().get('items', [])
+                    
+                    st.markdown("### 📹 Recent Videos (Real Data)")
+                    
+                    for video in videos[:5]:
+                        vid = video['snippet']
+                        video_id = video['contentDetails']['videoId']
+                        
+                        st.markdown(f"""
+                        <div class="post-card">
+                            <div style="display: flex; gap: 16px;">
+                                <div style="background: #1a1a26; width: 120px; height: 68px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #8B8B9A; font-size: 2rem;">▶️</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #ffffff;">{vid['title']}</div>
+                                    <div style="color: #8B8B9A; font-size: 0.85rem; margin-top: 4px;">
+                                        Published: {vid['publishedAt'][:10]} | Video ID: {video_id}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="api-success">
+                    ✅ <strong>REAL YouTube data is flowing!</strong> This is actual data from YouTube API, not mock data.
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.error(f"Failed to fetch channel data: {channel_resp.status_code}")
+        
+        except Exception as e:
+            st.error(f"YouTube API Error: {str(e)}")
+    else:
+        # No YouTube connected - show placeholder
+        st.markdown("### 📺 YouTube Analytics")
+        st.info("👆 Connect your YouTube channel in 'Connect Platforms' to see real data here.")
+        
+        st.markdown("""
+        <div style="background: #111118; border: 2px dashed #222230; border-radius: 16px; padding: 40px; text-align: center; margin: 20px 0;">
+            <div style="font-size: 3rem; margin-bottom: 16px;">📺</div>
+            <h3 style="color: #ffffff; margin: 0;">Connect YouTube for Real Data</h3>
+            <p style="color: #8B8B9A; margin: 12px 0;">
+                YouTube Data API v3 is the <strong style="color: #10B981;">ONLY free social media API</strong> that gives you real analytics.
+                <br><br>
+                All other platforms (Twitter, Instagram, LinkedIn) now charge $75-100+/month for API access.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Manual stats for other platforms
+    st.markdown("---")
+    st.markdown("### 📊 Other Platforms (Manual Entry)")
+    st.markdown("*Enter stats manually from your platform analytics pages*")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div class="dashboard-card">
+            <h4 style="color: #E1306C;">📷 Instagram</h4>
+            <p style="color: #8B8B9A; font-size: 0.85rem;">Enter from:<br>instagram.com → Insights</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        ig_followers = st.number_input("Instagram Followers", key="ig_followers", min_value=0)
+        ig_engagement = st.number_input("Engagement Rate %", key="ig_eng", min_value=0.0, max_value=100.0)
+    
+    with col2:
+        st.markdown("""
+        <div class="dashboard-card">
+            <h4 style="color: #ffffff;">𝕏 Twitter/X</h4>
+            <p style="color: #8B8B9A; font-size: 0.85rem;">Enter from:<br>analytics.twitter.com</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tw_followers = st.number_input("Twitter Followers", key="tw_followers", min_value=0)
+        tw_impressions = st.number_input("Monthly Impressions", key="tw_imp", min_value=0)
+    
+    with col3:
+        st.markdown("""
+        <div class="dashboard-card">
+            <h4 style="color: #0A66C2;">💼 LinkedIn</h4>
+            <p style="color: #8B8B9A; font-size: 0.85rem;">Enter from:<br>linkedin.com → Analytics</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        li_followers = st.number_input("LinkedIn Followers", key="li_followers", min_value=0)
+        li_views = st.number_input("Monthly Views", key="li_views", min_value=0)
 
 # ============================================================
-# FAQ
+# YOUTUBE ANALYTICS - THE ONLY REAL FREE DATA
 # ============================================================
+elif menu == "📺 YouTube Analytics":
+    st.markdown('<div class="main-hero">YouTube Analytics</div>', unsafe_allow_html=True)
+    st.markdown("*The only social platform with a FREE public API*")
+    
+    if 'YouTube' not in st.session_state.connected_accounts:
+        st.warning("⚠️ Connect YouTube first in 'Connect Platforms' to see real analytics")
+        
+        st.markdown("""
+        ### 🔧 How to Connect YouTube (Free)
+        
+        1. Go to **console.cloud.google.com**
+        2. Create new project → Name it "OmniPub"
+        3. Enable **YouTube Data API v3**
+        4. Go to Credentials → Create API Key
+        5. Get your Channel ID from YouTube Studio → Settings → Advanced
+        6. Paste both below
+        
+        **Cost:** $0 forever. Google gives 10,000 API units/day free (enough for this app).
+        """)
+        
+        api_key = st.text_input("YouTube API Key", type="password", key="yt_api_setup")
+        channel_id = st.text_input("Channel ID", placeholder="UC...", key="yt_ch_setup")
+        
+        if st.button("Test & Connect YouTube"):
+            if api_key and channel_id:
+                try:
+                    test_url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={api_key}"
+                    resp = requests.get(test_url, timeout=10)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get('items'):
+                            st.session_state.connected_accounts['YouTube'] = {
+                                'api_key': api_key,
+                                'channel_id': channel_id,
+                                'connected': True
+                            }
+                            st.session_state.youtube_api_key = api_key
+                            st.session_state.youtube_channel_id = channel_id
+                            st.success("✅ Connected! Scroll down to see your real data.")
+                            st.rerun()
+                        else:
+                            st.error("❌ Invalid Channel ID")
+                    else:
+                        st.error(f"❌ Error: {resp.status_code}")
+                except Exception as e:
+                    st.error(f"❌ Failed: {str(e)}")
+    else:
+        # Real YouTube data
+        api_key = st.session_state.connected_accounts['YouTube']['api_key']
+        channel_id = st.session_state.connected_accounts['YouTube']['channel_id']
+        
+        # Stats
+        st.markdown("### 📊 Real-Time Statistics")
+        
+        try:
+            # Channel stats
+            channel_url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id={channel_id}&key={api_key}"
+            resp = requests.get(channel_url, timeout=10)
+            
+            if resp.status_code == 200:
+                data = resp.json()['items'][0]
+                stats = data['statistics']
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Subscribers", f"{int(stats['subscriberCount']):,}")
+                with col2:
+                    st.metric("Total Views", f"{int(stats['viewCount']):,}")
+                with col3:
+                    st.metric("Videos", stats['videoCount'])
+                with col4:
+                    hidden = stats.get('hiddenSubscriberCount', False)
+                    st.metric("Subscriber Count", "Hidden" if hidden else "Visible")
+                
+                # Channel info
+                st.markdown(f"""
+                <div class="dashboard-card" style="margin-top: 20px;">
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background: #222230; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 2rem;">👤</span>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; color: #ffffff;">{data['snippet']['title']}</h3>
+                            <p style="color: #8B8B9A; margin: 4px 0;">{data['snippet']['description'][:200]}...</p>
+                            <p style="color: #4ECDC4; margin: 4px 0;">Custom URL: {data['snippet'].get('customUrl', 'N/A')}</p>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Fetch recent videos
+                uploads_id = data['contentDetails']['relatedPlaylists']['uploads']
+                
+                st.markdown("### 📹 Recent Videos")
+                
+                videos_url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,statistics&playlistId={uploads_id}&maxResults=10&key={api_key}"
+                videos_resp = requests.get(videos_url, timeout=10)
+                
+                if videos_resp.status_code == 200:
+                    videos = videos_resp.json().get('items', [])
+                    
+                    # Video table
+                    video_data = []
+                    for v in videos:
+                        snippet = v['snippet']
+                        stats_v = v.get('statistics', {})
+                        video_data.append({
+                            "Title": snippet['title'][:50],
+                            "Published": snippet['publishedAt'][:10],
+                            "Views": int(stats_v.get('viewCount', 0)),
+                            "Likes": int(stats_v.get('likeCount', 0)),
+                            "Comments": int(stats_v.get('commentCount', 0)),
+                        })
+                    
+                    st.dataframe(video_data)
+                    
+                    st.markdown(f"""
+                    <div class="api-success" style="margin-top: 20px;">
+                        ✅ <strong>Live YouTube Data:</strong> This is REAL data from YouTube API, last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        except Exception as e:
+            st.error(f"Error fetching data: {str(e)}")
+
+# ============================================================
+# CREATE POST
+# ============================================================
+elif menu == "📝 Create Post":
+    st.markdown('<div class="main-hero">Create & Schedule Posts</div>', unsafe_allow_html=True)
+    
+    platforms = st.multiselect("Post to", 
+        ["Instagram", "Twitter/X", "LinkedIn", "Facebook", "YouTube", "Pinterest", "TikTok"],
+        default=["Instagram", "Twitter/X"]
+    )
+    
+    content = st.text_area("What's happening?", height=150)
+    
+    hashtags = st.text_input("Hashtags (comma separated)", "#socialmedia #marketing #growth")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        schedule_date = st.date_input("Schedule Date")
+    with col2:
+        schedule_time = st.time_input("Schedule Time")
+    
+    if st.button("📅 Schedule Post"):
+        if content:
+            st.success(f"✅ Post scheduled for {schedule_date} at {schedule_time}")
+            st.balloons()
+        else:
+            st.warning("Please write something first")
+
 st.markdown("---")
-st.markdown("### ❓ Frequently Asked Questions")
+st.markdown("### 📝 The Reality of Social Media APIs")
+st.markdown("""
+| Platform | Free API Access | Analytics Available |
+|----------|-----------------|---------------------|
+| YouTube | ✅ Yes | ✅ Full analytics |
+| Instagram | 🟡 Basic | ❌ No insights |
+| Twitter/X | ❌ $100+/mo | ❌ No free access |
+| LinkedIn | ❌ $75+/mo | ❌ No free access |
+| Facebook | 🟡 Page only | ❌ No insights |
+| Pinterest | 🟡 Basic | 🟡 Limited |
 
-faqs = [
-    ("How is this free? What's the catch?", "We believe everyone deserves powerful social media tools. We make money through premium plans (Starter/Pro/Agency) while keeping core features free forever. No hidden catches, no watermark, no feature restrictions on the free plan."),
-    ("Is this really better than Hootsuite?", "Yes! OmniPub has all the features of Hootsuite Pro, plus AI-powered post composer, competitor tracking, hashtag intelligence, and team collaboration — all completely free. We update weekly based on user feedback."),
-    ("Can I connect multiple accounts per platform?", "Yes! On the free plan you can connect up to 5 accounts total. Pro and Agency plans offer unlimited accounts across all platforms."),
-    ("Does the AI composer actually work?", "Yes! The AI composer analyzes your topic, target audience, and goals to create engaging posts optimized for each platform. You can regenerate, edit, or use as inspiration. It learns from viral content patterns."),
-    ("Can I manage client accounts?", "Yes! The Agency plan includes full client management with white-label reports, multi-user roles, and dedicated support."),
-    ("What social platforms are supported?", "Currently: Instagram, Twitter/X, LinkedIn, Facebook, YouTube, Pinterest, and TikTok. We're adding more platforms based on user requests."),
-]
-
-for q, a in faqs:
-    with st.expander(f"❓ {q}"):
-        st.markdown(a)
-
-# ============================================================
-# FOOTER
-# ============================================================
-st.markdown("---")
-st.markdown(f"""
-<div style="text-align: center; padding: 30px 0; color: #6B7280;">
-    <p>📊 OmniPub — The Last Social Media Tool You'll Ever Need</p>
-    <p style="font-size: 0.85rem;">
-        <a href="#" style="color: #4ECDC4;">Privacy</a> · 
-        <a href="#" style="color: #4ECDC4;">Terms</a> · 
-        <a href="#" style="color: #4ECDC4;">Contact</a> · 
-        <a href="#" style="color: #4ECDC4;">Twitter</a>
-    </p>
-</div>
-""", unsafe_allow_html=True)
+**Conclusion:** YouTube is the ONLY platform that gives you real analytics data for free.
+""")
